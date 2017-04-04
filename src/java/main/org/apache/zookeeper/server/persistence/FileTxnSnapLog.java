@@ -212,20 +212,13 @@ public class FileTxnSnapLog {
         TxnHeader hdr;
         try {
             while (true) {
-                // iterator points to
-                // the first valid txn when initialized
+                // iterator points to the first valid txn when initialized
                 hdr = itr.getHeader();
                 if (hdr == null) {
                     //empty logs
                     return dt.lastProcessedZxid;
                 }
-                if (hdr.getZxid() < highestZxid && highestZxid != 0) {
-                    LOG.error("{}(higestZxid) > {}(next log) for type {}",
-                            new Object[] { highestZxid, hdr.getZxid(),
-                                    hdr.getType() });
-                } else {
-                    highestZxid = hdr.getZxid();
-                }
+                highestZxid = hdr.getZxid();
                 try {
                     processTransaction(hdr,dt,sessions, itr.getTxn());
                 } catch(KeeperException.NoNodeException e) {
@@ -397,6 +390,18 @@ public class FileTxnSnapLog {
     public List<File> findNRecentSnapshots(int n) throws IOException {
         FileSnap snaplog = new FileSnap(snapDir);
         return snaplog.findNRecentSnapshots(n);
+    }
+
+    /*
+     * the n most recent (maybe) valid snapshots
+     * @param n the number of recent valid snapshots
+     * @return the list of n most recent valid snapshots, with
+     * the most recent in front
+     * @throws IOException
+     */
+    public List<File> findNValidSnapshots(int n) throws IOException {
+        FileSnap snaplog = new FileSnap(snapDir);
+        return snaplog.findNValidSnapshots(n);
     }
 
     /**

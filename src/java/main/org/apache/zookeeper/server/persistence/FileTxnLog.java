@@ -574,20 +574,28 @@ public class FileTxnLog implements TxnLog {
          */
         void init() throws IOException {
             storedFiles = new ArrayList<File>();
-            List<File> files = Util.sortDataDir(FileTxnLog.getLogFiles(logDir.listFiles(), 0), "log", false);
+            List<File> files = Util.sortDataDir(
+                FileTxnLog.getLogFiles(logDir.listFiles(), 0), "log", false);
             for (File f: files) {
-                if (Util.getZxidFromName(f.getName(), "log") >= zxid) {
+                long currZxid = Util.getZxidFromName(f.getName(), "log");
+                if (currZxid >= zxid) {
                     storedFiles.add(f);
-                }
-                // add the last logfile that is less than the zxid
-                else if (Util.getZxidFromName(f.getName(), "log") < zxid) {
+                } else {
+                    // add the last logfile that is less than the zxid
                     storedFiles.add(f);
                     break;
                 }
             }
             goToNextLog();
-            if (!next())
+            while (next() && hdr.getZxid() < zxid) {
+                continue;
+            }
+            if (hdr != null && hdr.getZxid() != zxid) {
+                // The desired zxid was not found. It doesn't make sense to read
+                // any txn logs.
+                hdr = null;
                 return;
+            }
         }
         
         /**
